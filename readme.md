@@ -2,6 +2,9 @@
 
 Aplikasi berbasis Flask untuk mendeteksi emosi manusia dari gambar wajah, lalu merekomendasikan lagu berdasarkan emosi tersebut. Sistem ini menggunakan model CNN (Convolutional Neural Network) yang dilatih dari citra wajah dalam skala abu-abu, serta CSV berisi daftar lagu untuk setiap emosi.
 
+
+![Image](https://github.com/user-attachments/assets/735b3a82-1d53-4949-9d38-e41c4af19c5a)
+
 ---
 
 ## ✨ Fitur
@@ -76,8 +79,9 @@ data/
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/emotion-music-recommender.git
-cd emotion-music-recommender
+git clone https://github.com/Rifkyyyyyyyy/music-expresion.git
+cd music-expresion
+
 ```
 
 ### 2. Install Dependencies
