@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emotion Detector</title>
+
+  <!-- Font Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        fontFamily: {
+          sans: ['Roboto', 'sans-serif']
+        },
+        extend: {
+          colors: {
+            primary: '#0ea5e9',
+            surface: '#1e293b'
+          },
+          animation: {
+            float: 'float 6s ease-in-out infinite',
+            bubble: 'bubble 12s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-20px)' },
+            },
+            bubble: {
+              '0%': { transform: 'translateY(0) scale(1)', opacity: '0.3' },
+              '50%': { transform: 'translateY(-100vh) scale(1.2)', opacity: '0.1' },
+              '100%': { transform: 'translateY(-200vh) scale(1.5)', opacity: '0' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      overflow: hidden;
+      position: relative;
+    }
+    .bubble {
+      position: absolute;
+      border-radius: 9999px;
+      background-color: rgba(255, 255, 255, 0.07);
+      animation: bubble 20s infinite ease-in-out;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body class="dark text-gray-100 font-sans min-h-screen flex items-center justify-center px-4 py-8 relative">
+
+  <!-- Bubble effect -->
+  <div class="bubble w-20 h-20 left-10 bottom-0 animate-bubble"></div>
+  <div class="bubble w-32 h-32 left-1/3 bottom-10 animate-bubble"></div>
+  <div class="bubble w-16 h-16 right-20 bottom-0 animate-bubble"></div>
+  <div class="bubble w-24 h-24 right-1/4 bottom-16 animate-bubble"></div>
+
+  <!-- Content -->
+  <div class="relative z-10 w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 items-start justify-items-center backdrop-blur-md bg-white/5 p-6 rounded-2xl shadow-2xl border border-white/10">
+
+    <!-- Kamera -->
+    <div class="relative flex flex-col items-center gap-4">
+      <div id="emotionDisplay" class="absolute top-3 left-3 bg-black/60 px-4 py-1 rounded-full text-white text-sm font-medium z-10 shadow-lg">
+        Emosi: <span id="emotion" class="text-primary font-bold">-</span>
+      </div>
+
+      <video id="video" width="640" height="480" autoplay
+        class="rounded-xl shadow-2xl border border-slate-700 max-w-full"></video>
+      <canvas id="canvas" width="640" height="480" class="hidden"></canvas>
+
+      <!-- Tombol kontrol -->
+      <div class="flex gap-3 mt-2">
+        <button onclick="startDetection()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-xl shadow text-white font-semibold">▶️ Start</button>
+        <button onclick="pauseDetection()" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-xl shadow text-white font-semibold">⏸ Pause</button>
+        <button onclick="stopDetection()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl shadow text-white font-semibold">⏹ Stop</button>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="bg-slate-800/80 p-6 rounded-xl shadow-xl w-full border border-slate-700 backdrop-blur">
+      <h3 class="text-xl font-semibold mb-4">🎵 Daftar Lagu:</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm border-collapse">
+          <thead class="bg-slate-700 text-gray-300">
+            <tr>
+              <th class="px-4 py-2 text-left border-b border-slate-600">#</th>
+              <th class="px-4 py-2 text-left border-b border-slate-600">Judul Lagu</th>
+              <th class="px-4 py-2 text-left border-b border-slate-600">Album</th>
+              <th class="px-4 py-2 text-left border-b border-slate-600">Artis</th>
+            </tr>
+          </thead>
+          <tbody id="musicList" class="text-gray-100 divide-y divide-slate-700">
+            <!-- Diisi via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex justify-between items-center mt-4 text-sm text-gray-300">
+        <button onclick="prevPage()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded">⬅ Sebelumnya</button>
+        <span>Halaman <span id="currentPage">1</span></span>
+        <button onclick="nextPage()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded">Berikutnya ➡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let stream = null;
+    let intervalId = null;
+    let lastImageData = null;
+
+    let currentPage = 1;
+    const limit = 5;
+    let totalSongs = 0;
+
+    async function startDetection() {
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          video.srcObject = stream;
+        } catch (err) {
+          console.error("Gagal akses kamera:", err);
+          return;
+        }
+      }
+
+      lastImageData = null;
+      if (!intervalId) {
+        intervalId = setInterval(() => detectEmotion(true), 1000);
+        console.log("✅ Deteksi dimulai");
+      }
+    }
+
+    function pauseDetection() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        lastImageData = canvas.toDataURL("image/jpeg");
+        detectEmotion(true); // Reset ke halaman 1
+        console.log("⏸ Deteksi dijeda dan gambar disimpan");
+      }
+    }
+
+    function stopDetection() {
+      pauseDetection();
+      lastImageData = null;
+
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+        stream = null;
+        console.log("⛔ Kamera dimatikan");
+      }
+    }
+
+    async function detectEmotion(resetPage = false) {
+      if (resetPage) currentPage = 1;
+
+      let image;
+      if (lastImageData) {
+        image = lastImageData;
+      } else {
+        if (!stream) return;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        image = canvas.toDataURL("image/jpeg");
+      }
+
+      const res = await fetch(`/detect_emotion?page=${currentPage}&limit=${limit}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image })
+      });
+
+      const data = await res.json();
+      document.getElementById("emotion").innerText = data.emotion || "-";
+
+      const list = document.getElementById("musicList");
+      list.innerHTML = "";
+
+      const musicData = data.music?.data || [];
+      totalSongs = data.music?.total || 0;
+
+      if (musicData.length) {
+        musicData.forEach((song, index) => {
+          const row = document.createElement("tr");
+          row.className = "transition duration-300 hover:bg-slate-700 hover:scale-[1.01]";
+          row.innerHTML = `
+            <td class="px-4 py-2 border-b border-slate-700 text-center">${(currentPage - 1) * limit + index + 1}</td>
+            <td class="px-4 py-2 border-b border-slate-700">${song.Name}</td>
+            <td class="px-4 py-2 border-b border-slate-700">${song.Album}</td>
+            <td class="px-4 py-2 border-b border-slate-700">${song.Artist}</td>
+          `;
+          list.appendChild(row);
+        });
+      }
+
+      document.getElementById("currentPage").innerText = currentPage;
+    }
+
+    function nextPage() {
+      const maxPage = Math.ceil(totalSongs / limit);
+      if (currentPage < maxPage) {
+        currentPage++;
+        detectEmotion(false);
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        detectEmotion(false);
+      }
+    }
+
+    window.onload = () => {
+      startDetection();
+    }
+  </script>
+</body>
+</html>

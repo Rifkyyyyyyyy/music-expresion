@@ -1,0 +1,9 @@
+Flask
+spotipy
+pandas
+gunicorn
+opencv-python
+numpy
+Pillow
+tensorflow
+matplotlib
