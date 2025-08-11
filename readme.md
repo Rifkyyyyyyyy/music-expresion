@@ -5,6 +5,8 @@ Aplikasi berbasis Flask untuk mendeteksi emosi manusia dari gambar wajah, lalu m
 
 ![Image](https://github.com/user-attachments/assets/735b3a82-1d53-4949-9d38-e41c4af19c5a)
 
+https://github.com/user-attachments/assets/30ddf624-b8e5-4c2c-a61b-ea6c4638396d
+
 ---
 
 ## ✨ Fitur
